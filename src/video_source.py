@@ -1,17 +1,18 @@
 from typing import Callable
 import numpy as np
-from base import VideoSourceBase
+from src.base import VideoSourceBase
 import gi
+
 gi.require_version('Gst', '1.0')
 from gi.repository import Gst, GLib, GObject
 import logging
 
-# Configure logging
 logging.basicConfig(
     level=logging.DEBUG,
     format='%(asctime)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger(__name__)
+
 
 class GStreamerVideoSource(VideoSourceBase):
     def __init__(self, callback: Callable[[np.ndarray], None]):
@@ -31,20 +32,38 @@ class GStreamerVideoSource(VideoSourceBase):
                         device: str = "/dev/video0",
                         sink: str = "autovideosink") -> Gst.Pipeline:
         pipeline = Gst.Pipeline()
+
+        # Create elements
         src = Gst.ElementFactory.make(source, "source")
         if not src:
             logger.error("Failed to create source element")
             raise RuntimeError("Failed to create source")
         src.set_property("device", device)
+
+        # Add videoconvert to handle format conversion
+        convert = Gst.ElementFactory.make("videoconvert", "convert")
+        if not convert:
+            logger.error("Failed to create videoconvert element")
+            raise RuntimeError("Failed to create videoconvert")
+
         sink = Gst.ElementFactory.make(sink, "sink")
         if not sink:
             logger.error("Failed to create sink element")
             raise RuntimeError("Failed to create sink")
+
+        # Add elements to pipeline
         pipeline.add(src)
+        pipeline.add(convert)
         pipeline.add(sink)
-        if not src.link(sink):
-            logger.error("Failed to link source to sink")
-            raise RuntimeError("Failed to link elements")
+
+        # Link elements
+        if not src.link(convert):
+            logger.error("Failed to link source to videoconvert")
+            raise RuntimeError("Failed to link source to videoconvert")
+        if not convert.link(sink):
+            logger.error("Failed to link videoconvert to sink")
+            raise RuntimeError("Failed to link videoconvert to sink")
+
         logger.debug("Pipeline initialized successfully")
         return pipeline
 

@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 from typing import Callable
+import queue
 import numpy as np
 
 class VideoSourceBase(ABC):
@@ -13,7 +14,11 @@ class VideoSourceBase(ABC):
         pass
 
 class DataProcessorBase(ABC):
-    pass
+    def __init__(self, output_queue: queue.Queue):
+        self._output_queue = output_queue
+
+    def process_frame(self, frame: np.ndarray):
+        pass
 
 class StorageBase(ABC):
     pass

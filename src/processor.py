@@ -20,3 +20,6 @@ class MockDataProcessor(DataProcessorBase):
                        head_y: head_y,
                        "posture": posture}
         self._output_queue.put(metadata)
+
+    def _run_loop(self):
+        pass

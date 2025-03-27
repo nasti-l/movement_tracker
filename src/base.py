@@ -16,14 +16,6 @@ class VideoSourceBase(ABC):
     def stop(self):
         pass
 
-class DataProcessorBase(ABC):
-    def __init__(self, output_queue: queue.Queue):
-        self._output_queue = output_queue
-
-    @abstractmethod
-    def process_frame(self, frame: np.ndarray):
-        pass
-
 class ThreadedComponentBase(ABC):
     def __init__(self):
         self.running = False
@@ -39,6 +31,15 @@ class ThreadedComponentBase(ABC):
 
     @abstractmethod
     def _run_loop(self):
+        pass
+
+class DataProcessorBase(ThreadedComponentBase):
+    def __init__(self, output_queue: queue.Queue):
+        super().__init__()
+        self._output_queue = output_queue
+
+    @abstractmethod
+    def process_frame(self, frame: np.ndarray):
         pass
 
 class StorageBase(ABC):

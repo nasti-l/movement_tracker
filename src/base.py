@@ -4,7 +4,7 @@ import numpy as np
 
 class VideoSourceBase(ABC):
     def __init__(self, callback: Callable[[np.ndarray], None]):
-        self.callback = callback
+        self._callback = callback
     @abstractmethod
     def start(self):
         pass

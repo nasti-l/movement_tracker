@@ -28,9 +28,26 @@ class GStreamerVideoSource(VideoSourceBase):
         bus.connect("message", self.__on_bus_message)
         logger.info("Initialization complete")
 
+    def _on_new_sample(self, sink):
+        sample = sink.emit("pull-sample")
+        buf = sample.get_buffer()
+        caps = sample.get_caps()
+        struct = caps.get_structure(0)
+        height = caps.get_structure(0).get_value("height")
+        width = caps.get_structure(0).get_value("width")
+        format = struct.get_value("format")
+        logger.debug(f"Caps: width={width}, height={height}, format={format}, buffer_size={buf.get_size()}")
+        data = buf.extract_dup(0, buf.get_size())
+        if format == "YUY2":
+            frame = np.frombuffer(data, dtype=np.uint8).reshape(height, width, 2)
+        else:
+            frame = np.frombuffer(data, dtype=np.uint8).reshape(height, width, 3) # RGB
+        self._callback(frame)
+        return Gst.FlowReturn.OK
+
     def __pipeline_init(self, source: str = "v4l2src",
                         device: str = "/dev/video0",
-                        sink: str = "autovideosink") -> Gst.Pipeline:
+                        sink: str = "appsink") -> Gst.Pipeline:
         pipeline = Gst.Pipeline()
 
         # Create elements
@@ -50,6 +67,8 @@ class GStreamerVideoSource(VideoSourceBase):
         if not sink:
             logger.error("Failed to create sink element")
             raise RuntimeError("Failed to create sink")
+        sink.set_property("emit-signals", True) # actively notify via signals when a frame is ready
+        sink.connect("new-sample", self._on_new_sample)
 
         # Add elements to pipeline
         pipeline.add(src)
@@ -97,11 +116,3 @@ class GStreamerVideoSource(VideoSourceBase):
             self.__pipeline.set_state(Gst.State.NULL)
         logger.info("Quitting main loop...")
         self.__main_loop.quit()
-
-if __name__ == "__main__":
-    video = GStreamerVideoSource(callback=lambda _: None)
-    try:
-        video.start()
-    except KeyboardInterrupt:
-        logger.info("Received KeyboardInterrupt, stopping video...")
-        video.stop()
